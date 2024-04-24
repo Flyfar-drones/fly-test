@@ -65,7 +65,18 @@ class MainApp:
                 dpg.add_button(label="Stop", callback=self.stop)
                 dpg.add_button(label="Reset all values", callback=self.reset)
 
-            dpg.add_text("App menu: ")
+            #get current PID data, write them as default values TODO
+            default_p = 15.5
+            default_i = 15.5
+            default_d = 15.5
+
+            dpg.add_text("Drone control:")
+            self.input_p = dpg.add_input_text(label="P", default_value=default_p)
+            self.input_i = dpg.add_input_text(label="I", default_value=default_i)
+            self.input_d = dpg.add_input_text(label="D", default_value=default_d)
+            dpg.add_button(label="Send", callback=self.send_new_pid_data)
+
+            dpg.add_text("App menu:")
             dpg.add_text("TODO")
 
 
@@ -84,7 +95,7 @@ class MainApp:
                 self.accel_data_y.append(y_accel)
                 self.gyro_data_y.append(y_gyro)
                 self.PID_data_y.append(y_PID)
-                
+
                 #set the series x and y to the last nsamples
                 dpg.set_value('accel', [self.data_x[-self.visible_data_patch:], self.accel_data_y[-self.visible_data_patch:]])
                 dpg.set_value('gyro', [self.data_x[-self.visible_data_patch:], self.gyro_data_y[-self.visible_data_patch:]])
@@ -105,6 +116,14 @@ class MainApp:
 
     def stop(self):
         self.running = False
+
+    def send_new_pid_data(self):
+        value_p = float(dpg.get_value(self.input_p))
+        value_i = float(dpg.get_value(self.input_i))
+        value_d = float(dpg.get_value(self.input_d))
+
+        #TODO send data sockets
+        print(value_p, value_i, value_d)
 
     def reset(self):
 
