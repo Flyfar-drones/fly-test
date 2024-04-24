@@ -1,8 +1,12 @@
 import dearpygui.dearpygui as dpg
-import math
+import socket
 import time
 import threading
 import numpy as np
+
+class SocketFetch:
+    def __init__(self):
+        self.socket = socket.socket()
 
 class MainApp:
     def __init__(self, visible_data_patch, time_step):
@@ -17,14 +21,16 @@ class MainApp:
         self.time_step = time_step
 
         self.running = False
-        self.thread = threading.Thread(target=self.update_data)
-        self.thread.start()
+        self.process = threading.Thread(target=self.update_data)
+        self.process.daemon = True
+        self.process.start()
 
     def app_init(self):
         dpg.create_viewport(title='Flyfar fly-test', width=1500, height=1000)
         dpg.setup_dearpygui()
         dpg.show_viewport()
         dpg.set_primary_window("window", True)
+        #dpg.set_exit_callback(self.app_exit)
         dpg.start_dearpygui()
 
     def gui_init(self):
@@ -58,6 +64,10 @@ class MainApp:
                 dpg.add_button(label="Start", callback=self.start)
                 dpg.add_button(label="Stop", callback=self.stop)
                 dpg.add_button(label="Reset all values", callback=self.reset)
+
+            dpg.add_text("App menu: ")
+            dpg.add_text("TODO")
+
 
     def update_data(self):
         self.iter = 0
@@ -108,6 +118,9 @@ class MainApp:
         dpg.set_value('accel', [self.data_x, self.accel_data_y])
         dpg.set_value('gyro', [self.data_x, self.gyro_data_y])
         dpg.set_value('pid', [self.data_x, self.PID_data_y])
+
+    def app_exit(self):
+        exit(0)
 
 if __name__ == "__main__":
     app = MainApp(visible_data_patch=100, time_step=0.1)
