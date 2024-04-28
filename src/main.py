@@ -17,6 +17,10 @@ class MainApp:
 
         self.data_x = []
 
+        #app variables
+        self.host = "127.0.0.1"
+        self.port = 7500
+
         self.visible_data_patch = visible_data_patch
         self.time_step = time_step
 
@@ -77,19 +81,32 @@ class MainApp:
             dpg.add_button(label="Send", callback=self.send_new_pid_data)
 
             dpg.add_text("App menu:")
-            dpg.add_text("TODO")
-
+            self.input_addr = dpg.add_input_text(label="server address", default_value="127.0.0.1")
+            self.input_port = dpg.add_input_text(label="server port", default_value="7500")
+            dpg.add_button(label="Connect to server", callback=self.connect_to_server)
+            self.server_status = dpg.add_text("Not connected to server")
 
     def update_data(self):
         self.iter = 0
         while True:
             if self.running:
 
-                #Getting data from sensors TODO
-                y_accel = np.random.randint(0, 255)
-                y_gyro = np.random.randint(0, 255)
-                y_PID = np.random.randint(0, 255)
+                #Getting data from sensors
+                data = self.socket_server.recv(1024).decode()
+                print(data)
+                data_arr = data.split(",")
+                
+                try:
+                    y_accel = float(data_arr[0])
+                    y_gyro = float(data_arr[1])
+                    y_PID = float(data_arr[2])
 
+                    print(y_accel)
+                    print(y_gyro)
+                    print(y_PID)
+                except ValueError:
+                    continue
+                
                 self.data_x.append(self.iter)
 
                 self.accel_data_y.append(y_accel)
@@ -140,6 +157,16 @@ class MainApp:
 
     def app_exit(self):
         exit(0)
+    
+    def connect_to_server(self):
+        self.host = dpg.get_value(self.input_addr)
+        self.port = int(dpg.get_value(self.input_port))
+
+        #connect to server
+        self.socket_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket_server.connect((self.host, self.port))
+
+        dpg.set_value(self.server_status, "Connected to server")
 
 if __name__ == "__main__":
     app = MainApp(visible_data_patch=100, time_step=0.1)
