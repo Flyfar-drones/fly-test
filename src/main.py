@@ -1,3 +1,7 @@
+#
+# Main app
+#
+
 import dearpygui.dearpygui as dpg
 import socket
 import time
@@ -168,8 +172,11 @@ class MainApp:
 
         dpg.set_value(self.server_status, "Connected to server")
 
-if __name__ == "__main__":
+def run_app():
     app = MainApp(visible_data_patch=100, time_step=0.1)
     app.gui_init()
     app.app_init()
     dpg.destroy_context()
+
+if __name__ == "__main__":
+    run_app()

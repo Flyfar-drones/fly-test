@@ -1,12 +1,16 @@
+#
+# Fake server for app testing
+#
+
 import socket
 import numpy as np
 import time
 
-if __name__ == "__main__":
-    HOST = "127.0.0.1"
-    PORT = 7500
-    client_sockets = []
+HOST = "127.0.0.1"
+PORT = 7500
+client_sockets = []
 
+def run_server():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((HOST, PORT))
         s.listen()
@@ -25,3 +29,6 @@ if __name__ == "__main__":
                 data = f"{y_accel},{y_gyro},{y_PID}\n"
                 for i, client in enumerate(client_sockets):
                     client.send(data.encode())
+
+if __name__ == "__main__":
+    run_server()
