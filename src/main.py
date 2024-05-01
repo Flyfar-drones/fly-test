@@ -263,9 +263,9 @@ class MainApp:
 
         self.iter = 0
 
-        dpg.set_value('accel', [self.data_x, self.accel_data_y])
-        dpg.set_value('gyro', [self.data_x, self.gyro_data_y])
-        dpg.set_value('pid', [self.data_x, self.PID_data_y])
+        dpg.set_value('accel_x', [self.data_x, self.accel_data_y])
+        dpg.set_value('gyro_x', [self.data_x, self.gyro_data_y])
+        dpg.set_value('pid_x', [self.data_x, self.PID_data_y])
 
     def app_exit(self):
         exit(0)
