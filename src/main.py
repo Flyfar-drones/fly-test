@@ -26,10 +26,6 @@ class MainApp:
         self.visible_data_patch = visible_data_patch
         self.time_step = time_step
 
-        #set logger
-        self.verbose = verbose
-        self.logger = logger
-
         self.running = False
         self.process = threading.Thread(target=self.update_data)
         self.process.daemon = True
@@ -137,9 +133,17 @@ class MainApp:
             default_d = 15.5
 
             self.header_drone = dpg.add_text("Drone control:")
-            self.input_p = dpg.add_input_text(label="P", default_value=default_p)
-            self.input_i = dpg.add_input_text(label="I", default_value=default_i)
-            self.input_d = dpg.add_input_text(label="D", default_value=default_d)
+            with dpg.group(horizontal=True, width=300):
+                dpg.add_text("P")
+                self.input_p = dpg.add_input_text(label="", default_value=default_p)
+            
+            with dpg.group(horizontal=True, width=300):
+                dpg.add_text("I")
+                self.input_i = dpg.add_input_text(label="", default_value=default_i)
+            
+            with dpg.group(horizontal=True, width=300):
+                dpg.add_text("D")
+                self.input_d = dpg.add_input_text(label="", default_value=default_d)
             dpg.add_button(label="Send new PID", callback=self.send_new_pid_data)
 
             with dpg.group(horizontal=True, width=300):
@@ -264,6 +268,7 @@ class MainApp:
         value_setpoint_z = float(dpg.get_value(self.input_setpoint_z))
 
         self.socket_server.send(f"set {value_setpoint_x}".encode())
+        #TODO send more setpoints when Andri says so
 
     def reset(self):
 
@@ -294,7 +299,7 @@ class MainApp:
 
         dpg.set_value(self.server_status, "Connected to server")
 
-def run_app(logger, verbose = False):
+def run_app():
     app = MainApp(visible_data_patch=100, time_step=0.1)
     app.gui_init()
     app.app_init()

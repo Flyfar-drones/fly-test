@@ -1,6 +1,6 @@
 /package
 /src/__pycache__
-config.yml
+/configs/config.yml
 
 /logs/*
 !/logs/.gitkeep

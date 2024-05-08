@@ -6,6 +6,8 @@ import threading
 import logging
 import os
 import sys
+import argparse
+import yaml
 
 from main import run_app
 from fake_server import run_server
@@ -47,7 +49,7 @@ class Tester:
         self.logger = logger
 
     def run_tester(self):
-        self.thread_app = threading.Thread(target=run_app, args=(self.logger, True,))
+        self.thread_app = threading.Thread(target=run_app)
         self.thread_server = threading.Thread(target=run_server, args=(self.logger, True,))
 
         self.logger.log("Tester", "Started")
@@ -59,6 +61,28 @@ class Tester:
         self.thread_server.join()
 
 if __name__ == "__main__":
-    logger = CustomLogger("./logs/tester.log", "tester-log")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--config")
+
+    args = parser.parse_args()
+    
+    #reading yaml
+    yaml_path = args.config
+    yaml_file = None
+    with open(yaml_path) as stream:
+        try:
+            yaml_file = yaml.safe_load(stream)
+        except yaml.YAMLError:
+            print("error reading YAML file, quitting...")
+            exit(0)
+
+    print(yaml_file)
+
+    #variables
+    server_timeout = yaml_file["server_response"] #TODO implement
+    logger_path = yaml_file["log_path"]
+    logger_name = yaml_file["log_name"]
+
+    logger = CustomLogger(logger_path, logger_name)
     tester = Tester(logger)
     tester.run_tester()

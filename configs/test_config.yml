@@ -1,0 +1,3 @@
+server_response: 1
+log_path: "./logs/tester.log"
+log_name: "tester-log"
