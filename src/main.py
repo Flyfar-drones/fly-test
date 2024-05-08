@@ -26,6 +26,10 @@ class MainApp:
         self.visible_data_patch = visible_data_patch
         self.time_step = time_step
 
+        #set logger
+        self.verbose = verbose
+        self.logger = logger
+
         self.running = False
         self.process = threading.Thread(target=self.update_data)
         self.process.daemon = True
@@ -128,7 +132,6 @@ class MainApp:
                 dpg.add_button(label="Stop", callback=self.stop)
                 dpg.add_button(label="Reset all values", callback=self.reset)
 
-            #get current PID data, write them as default values TODO
             default_p = 15.5
             default_i = 15.5
             default_d = 15.5
@@ -140,8 +143,16 @@ class MainApp:
             dpg.add_button(label="Send new PID", callback=self.send_new_pid_data)
 
             with dpg.group(horizontal=True, width=300):
-                dpg.add_text("Setpoint")
-                self.input_setpoint = dpg.add_input_text(label="")
+                dpg.add_text("Setpoint X")
+                self.input_setpoint_x = dpg.add_input_text(label="")
+
+            with dpg.group(horizontal=True, width=300):
+                dpg.add_text("Setpoint Y")
+                self.input_setpoint_y = dpg.add_input_text(label="")
+
+            with dpg.group(horizontal=True, width=300):
+                dpg.add_text("Setpoint Z")
+                self.input_setpoint_z = dpg.add_input_text(label="")
 
             dpg.add_button(label="Send new Setpoint", callback=self.send_new_setpoint)
 
@@ -205,9 +216,7 @@ class MainApp:
                     y_gyro = float(data_arr[0])
                     y_PID = float(data_arr[1])
 
-                    print(y_accel)
-                    print(y_gyro)
-                    print(y_PID)
+
                 except ValueError:
                     continue
                 
@@ -235,24 +244,26 @@ class MainApp:
     def start(self):
         self.running = True
 
-        self.socket_server.send(b"start\n")
+        self.socket_server.send(b"run")
 
     def stop(self):
         self.running = False
 
-        self.socket_server.send(b"stop\n")
+        self.socket_server.send(b"end")
 
     def send_new_pid_data(self):
         value_p = float(dpg.get_value(self.input_p))
         value_i = float(dpg.get_value(self.input_i))
         value_d = float(dpg.get_value(self.input_d))
 
-        #TODO send data sockets
-        print(value_p, value_i, value_d)
+        self.socket_server.send(f"pid {value_p},{value_i},{value_d}".encode())
 
     def send_new_setpoint(self):
-        value_setpoint = float(dpg.get_value(self.input_setpoint))
-        print(value_setpoint)
+        value_setpoint_x = float(dpg.get_value(self.input_setpoint_x))
+        value_setpoint_y = float(dpg.get_value(self.input_setpoint_y))
+        value_setpoint_z = float(dpg.get_value(self.input_setpoint_z))
+
+        self.socket_server.send(f"set {value_setpoint_x}".encode())
 
     def reset(self):
 
@@ -283,7 +294,7 @@ class MainApp:
 
         dpg.set_value(self.server_status, "Connected to server")
 
-def run_app():
+def run_app(logger, verbose = False):
     app = MainApp(visible_data_patch=100, time_step=0.1)
     app.gui_init()
     app.app_init()

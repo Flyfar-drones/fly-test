@@ -8,14 +8,16 @@ import time
 
 HOST = "127.0.0.1"
 PORT = 7500
-client_sockets = []
+#client_sockets = []
 
-def run_server():
+def run_server(logger, verbose = False):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((HOST, PORT))
         s.listen()
         client_socket, addr = s.accept()
-        client_sockets.append(client_socket)
+        client_socket.settimeout(1)
+        #client_sockets.append(client_socket) TODO
+        client_socket
         with client_socket:
             print(f"Connected by {addr}")
             while True:
@@ -24,11 +26,19 @@ def run_server():
                 y_PID = np.random.randint(0, 255) + round(np.random.random(), 2)
                 time.sleep(1)
 
-                print(y_accel, y_gyro, y_PID)
+                if verbose:
+                    logger.log("Server", f"Set Y values of: {y_accel}, {y_gyro}, {y_PID}")
 
                 data = f"{y_accel},{y_gyro},{y_PID}\n"
-                for i, client in enumerate(client_sockets):
-                    client.send(data.encode())
+                client_socket.send(data.encode())
+
+                try:
+                    recv_data = client_socket.recv(1024).decode("utf-8")
+                except TimeoutError:
+                    continue #timeout
+
+                if verbose:
+                    logger.log("Server", f"received data: {recv_data}")
 
 if __name__ == "__main__":
     run_server()
