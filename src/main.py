@@ -6,6 +6,7 @@ import dearpygui.dearpygui as dpg
 import socket
 import time
 import threading
+import logging
 from pathlib import Path
 import os
 import yaml
@@ -31,6 +32,8 @@ class MainApp:
         self.process.daemon = True
         self.process.start()
 
+        self.connected_to_server = False
+
     def app_init(self):
         dpg.create_viewport(title='Flyfar fly-test', width=1500, height=1000)
         dpg.setup_dearpygui()
@@ -46,8 +49,9 @@ class MainApp:
 
         dpg.create_context()
         with dpg.font_registry():
-            self.header_font = dpg.add_font(self.bold_font_path, 20)
-            self.default_font = dpg.add_font(self.default_font_path, 15)
+            self.header_font = dpg.add_font(self.bold_font_path, 20 * 2)
+            self.default_font = dpg.add_font(self.default_font_path, 15 * 2)
+        dpg.set_global_font_scale(0.5) #temp fix for: https://github.com/hoffstadt/DearPyGui/issues/1380
 
         with dpg.window(label='Data', tag='window'):
             with dpg.group(horizontal=True):
@@ -172,6 +176,7 @@ class MainApp:
             with dpg.group(horizontal=True):
                 dpg.add_button(label="Load config.yml", callback=lambda: dpg.show_item("file_dialog"))
                 dpg.add_button(label="Connect to server", callback=self.connect_to_server)
+                dpg.add_button(label="Disconnect from server", callback=self.disconnect_from_server)
             
             self.server_status = dpg.add_text("Not connected to server")
 
@@ -287,17 +292,24 @@ class MainApp:
         exit(0)
     
     def connect_to_server(self):
-        self.host = dpg.get_value(self.input_addr)
-        self.port = int(dpg.get_value(self.input_port))
+        if not self.connected_to_server:
+            self.host = dpg.get_value(self.input_addr)
+            self.port = int(dpg.get_value(self.input_port))
 
-        print(self.host)
-        print(self.port)
+            #connect to server
+            self.socket_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket_server.connect((self.host, self.port))
 
-        #connect to server
-        self.socket_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket_server.connect((self.host, self.port))
+            dpg.set_value(self.server_status, "Connected to server")
+            self.connected_to_server = True
+    
+    def disconnect_from_server(self):
+        if self.connected_to_server:
+            self.socket_server.close()
+            del self.socket_server
 
-        dpg.set_value(self.server_status, "Connected to server")
+            dpg.set_value(self.server_status, "Not connected to server")
+            self.connected_to_server = False
 
 def run_app():
     app = MainApp(visible_data_patch=100, time_step=0.1)
