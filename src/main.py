@@ -4,7 +4,10 @@
 
 import dearpygui.dearpygui as dpg
 import socket
+
 import time
+from datetime import datetime
+
 import threading
 import logging
 from pathlib import Path
@@ -14,15 +17,31 @@ import yaml
 class MainApp:
     def __init__(self, visible_data_patch, time_step):
         #data
+        self.accel_data_x = []
+        self.gyro_data_x = []
+        self.PID_data_x = []
+        self.setpoint_x = []
+
         self.accel_data_y = []
         self.gyro_data_y = []
         self.PID_data_y = []
+        self.setpoint_y = []
+
+        self.accel_data_z = []
+        self.gyro_data_z = []
+        self.PID_data_z = []
+        self.setpoint_z = []
+
+        self.current_setpoint_x = 0
+        self.current_setpoint_y = 0
+        self.current_setpoint_z = 0
 
         self.data_x = []
 
         #app variables
         self.host = "127.0.0.1"
         self.port = 7500
+        self.socket_server = None
 
         self.visible_data_patch = visible_data_patch
         self.time_step = time_step
@@ -33,6 +52,7 @@ class MainApp:
         self.process.start()
 
         self.connected_to_server = False
+        self.current_log_text = ""
 
     def app_init(self):
         dpg.create_viewport(title='Flyfar fly-test', width=1500, height=1000)
@@ -66,17 +86,21 @@ class MainApp:
 
                     # series belong to a y axis. Note the tag name is used in the update
                     # function update_data
-                    dpg.add_line_series(x=list(self.data_x),y=list(self.accel_data_y), 
+                    dpg.add_line_series(x=list(self.data_x),y=list(self.accel_data_x), 
                                         label='Accel data', parent='y_axis_x', 
                                         tag='accel_x')
                     
-                    dpg.add_line_series(x=list(self.data_x),y=list(self.gyro_data_y), 
+                    dpg.add_line_series(x=list(self.data_x),y=list(self.gyro_data_x), 
                                         label='Gyro data', parent='y_axis_x', 
                                         tag='gyro_x')
                     
-                    dpg.add_line_series(x=list(self.data_x),y=list(self.PID_data_y), 
+                    dpg.add_line_series(x=list(self.data_x),y=list(self.PID_data_x), 
                                         label='PID data', parent='y_axis_x', 
                                         tag='pid_x')
+
+                    dpg.add_line_series(x=list(self.data_x), y=list(self.setpoint_x),
+                                        label='Setpoint', parent='y_axis_x',
+                                        tag='setpoint_x')
                     
                 with dpg.plot(label='PID Y'):
                     # optionally create legend
@@ -112,15 +136,15 @@ class MainApp:
 
                         # series belong to a y axis. Note the tag name is used in the update
                         # function update_data
-                        dpg.add_line_series(x=list(self.data_x),y=list(self.accel_data_y), 
+                        dpg.add_line_series(x=list(self.data_x),y=list(self.accel_data_z), 
                                             label='Accel data', parent='y_axis_z', 
                                             tag='accel_z')
                         
-                        dpg.add_line_series(x=list(self.data_x),y=list(self.gyro_data_y), 
+                        dpg.add_line_series(x=list(self.data_x),y=list(self.gyro_data_z), 
                                             label='Gyro data', parent='y_axis_z', 
                                             tag='gyro_z')
                         
-                        dpg.add_line_series(x=list(self.data_x),y=list(self.PID_data_y), 
+                        dpg.add_line_series(x=list(self.data_x),y=list(self.PID_data_z), 
                                             label='PID data', parent='y_axis_z', 
                                             tag='pid_z')
                                     
@@ -152,15 +176,15 @@ class MainApp:
 
             with dpg.group(horizontal=True, width=300):
                 dpg.add_text("Setpoint X")
-                self.input_setpoint_x = dpg.add_input_text(label="")
+                self.input_setpoint_x = dpg.add_input_text(default_value="0")
 
             with dpg.group(horizontal=True, width=300):
                 dpg.add_text("Setpoint Y")
-                self.input_setpoint_y = dpg.add_input_text(label="")
+                self.input_setpoint_y = dpg.add_input_text(default_value="0")
 
             with dpg.group(horizontal=True, width=300):
                 dpg.add_text("Setpoint Z")
-                self.input_setpoint_z = dpg.add_input_text(label="")
+                self.input_setpoint_z = dpg.add_input_text(default_value="0")
 
             dpg.add_button(label="Send new Setpoint", callback=self.send_new_setpoint)
 
@@ -180,10 +204,14 @@ class MainApp:
             
             self.server_status = dpg.add_text("Not connected to server")
 
+            self.header_command_log = dpg.add_text("App logs:")
+            self.log_field = dpg.add_input_text(width=800, height=200, multiline=True, readonly=True)
+
             #bind every header to header font
             dpg.bind_item_font(self.header_app, self.header_font)
             dpg.bind_item_font(self.header_drone, self.header_font)
             dpg.bind_item_font(self.header_sim, self.header_font)
+            dpg.bind_item_font(self.header_command_log, self.header_font)
 
             #bind default font
             dpg.bind_font(self.default_font)
@@ -210,35 +238,53 @@ class MainApp:
         print("Sender: ", sender)
         print("App Data: ", app_data)
 
+    def log(self, text):
+        current_time = datetime.now()
+        formatted_time = current_time.strftime("%H:%M:%S")
+
+        self.current_log_text += f"[{formatted_time}]: {text}\n"
+        dpg.set_value(self.log_field, self.current_log_text)
+    
+    def check_for_socket_server(self, message):
+        if self.socket_server:
+            self.socket_server.send(message.encode("utf-8"))
+        else:
+            self.log("client: Not connected to server")
+
     def update_data(self):
         self.iter = 0
         while True:
-            if self.running:
-
+            if self.running and self.socket_server:
                 #Getting data from sensors
                 data = self.socket_server.recv(1024).decode()
-                print(data)
                 data_arr = data.split(",")
                 
                 try:
                     y_accel = 0
                     y_gyro = float(data_arr[0])
                     y_PID = float(data_arr[1])
-
-
                 except ValueError:
                     continue
                 
                 self.data_x.append(self.iter)
 
-                self.accel_data_y.append(y_accel)
-                self.gyro_data_y.append(y_gyro)
-                self.PID_data_y.append(y_PID)
+                #update PID X
+                self.setpoint_x.append(self.current_setpoint_x)
+                self.accel_data_x.append(y_accel)
+                self.gyro_data_x.append(y_gyro)
+                self.PID_data_x.append(y_PID)
+                
+                #update PID Y
+                self.setpoint_y.append(self.current_setpoint_y)
 
-                #set values for PID X (TODO)
-                dpg.set_value('accel_x', [self.data_x[-self.visible_data_patch:], self.accel_data_y[-self.visible_data_patch:]])
-                dpg.set_value('gyro_x', [self.data_x[-self.visible_data_patch:], self.gyro_data_y[-self.visible_data_patch:]])
-                dpg.set_value('pid_x', [self.data_x[-self.visible_data_patch:], self.PID_data_y[-self.visible_data_patch:]])
+                #update PID Z
+                self.setpoint_z.append(self.current_setpoint_z)
+
+                #set values for PID X (TODO, add more values)
+                dpg.set_value('accel_x', [self.data_x[-self.visible_data_patch:], self.accel_data_x[-self.visible_data_patch:]])
+                dpg.set_value('gyro_x', [self.data_x[-self.visible_data_patch:], self.gyro_data_x[-self.visible_data_patch:]])
+                dpg.set_value('pid_x', [self.data_x[-self.visible_data_patch:], self.PID_data_x[-self.visible_data_patch:]])
+                dpg.set_value('setpoint_x', [self.data_x[-self.visible_data_patch:], self.setpoint_x[-self.visible_data_patch:]])
 
                 dpg.fit_axis_data('x_axis_x')
                 dpg.fit_axis_data('y_axis_x')
@@ -253,40 +299,54 @@ class MainApp:
     def start(self):
         self.running = True
 
-        self.socket_server.send(b"run")
+        self.check_for_socket_server("run")
 
     def stop(self):
         self.running = False
 
-        self.socket_server.send(b"end")
+        self.check_for_socket_server("end")
 
     def send_new_pid_data(self):
-        value_p = float(dpg.get_value(self.input_p))
-        value_i = float(dpg.get_value(self.input_i))
-        value_d = float(dpg.get_value(self.input_d))
+        try:
+            value_p = float(dpg.get_value(self.input_p))
+            value_i = float(dpg.get_value(self.input_i))
+            value_d = float(dpg.get_value(self.input_d))
+        except ValueError:
+            self.log("client: Invalid value")
+            return
 
-        self.socket_server.send(f"pid {value_p},{value_i},{value_d}".encode())
+        self.check_for_socket_server(f"pid {value_p},{value_i},{value_d}")
+        self.log("client: Sent new PID data")
 
     def send_new_setpoint(self):
-        value_setpoint_x = float(dpg.get_value(self.input_setpoint_x))
-        value_setpoint_y = float(dpg.get_value(self.input_setpoint_y))
-        value_setpoint_z = float(dpg.get_value(self.input_setpoint_z))
+        try:
+            value_setpoint_x = float(dpg.get_value(self.input_setpoint_x))
+            value_setpoint_y = float(dpg.get_value(self.input_setpoint_y))
+            value_setpoint_z = float(dpg.get_value(self.input_setpoint_z))
 
-        self.socket_server.send(f"set {value_setpoint_x}".encode())
+            self.current_setpoint_x = value_setpoint_x
+            self.current_setpoint_y = value_setpoint_y
+            self.current_setpoint_z = value_setpoint_z
+        except ValueError:
+            self.log("client: Invalid value")
+            return
+
+        self.check_for_socket_server(f"set {value_setpoint_x}")
         #TODO send more setpoints when Andri says so
+        self.log("client: Sent new Setpoint data")
 
     def reset(self):
 
         self.data_x = []
-        self.accel_data_y = []
-        self.gyro_data_y = []
-        self.PID_data_y = []
+        self.accel_data_x = []
+        self.gyro_data_x = []
+        self.PID_data_x = []
 
         self.iter = 0
 
-        dpg.set_value('accel_x', [self.data_x, self.accel_data_y])
-        dpg.set_value('gyro_x', [self.data_x, self.gyro_data_y])
-        dpg.set_value('pid_x', [self.data_x, self.PID_data_y])
+        dpg.set_value('accel_x', [self.data_x, self.accel_data_x])
+        dpg.set_value('gyro_x', [self.data_x, self.gyro_data_x])
+        dpg.set_value('pid_x', [self.data_x, self.PID_data_x])
 
     def app_exit(self):
         exit(0)
@@ -298,10 +358,18 @@ class MainApp:
 
             #connect to server
             self.socket_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket_server.connect((self.host, self.port))
+            try:
+                self.socket_server.connect((self.host, self.port))
+            except ConnectionRefusedError:
+                self.log("client: ERROR: Connection refused")
+                return
 
             dpg.set_value(self.server_status, "Connected to server")
+            self.log("client: Connected to server")
             self.connected_to_server = True
+        else:
+            self.log("client: Already connected to the server")
+
     
     def disconnect_from_server(self):
         if self.connected_to_server:
@@ -309,7 +377,10 @@ class MainApp:
             del self.socket_server
 
             dpg.set_value(self.server_status, "Not connected to server")
+            self.log("client: Disconnected from server")
             self.connected_to_server = False
+        else:
+            self.log("client: Not connected to the server")
 
 def run_app():
     app = MainApp(visible_data_patch=100, time_step=0.1)
