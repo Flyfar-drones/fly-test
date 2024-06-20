@@ -43,14 +43,15 @@ class CustomLogger:
         self.logger.error(f"({log_part}) {log_message}")
 
 class Tester:
-    def __init__(self, logger):
+    def __init__(self, logger, timeout):
         self.data_from_app = []
         self.data_from_server = []
         self.logger = logger
+        self.timeout = timeout
 
     def run_tester(self):
         self.thread_app = threading.Thread(target=run_app)
-        self.thread_server = threading.Thread(target=run_server, args=(self.logger, True,))
+        self.thread_server = threading.Thread(target=run_server, args=(self.logger, True, self.timeout))
 
         self.logger.log("Tester", "Started")
 
@@ -79,10 +80,10 @@ if __name__ == "__main__":
     print(yaml_file)
 
     #variables
-    server_timeout = yaml_file["server_response"] #TODO implement
+    server_timeout = yaml_file["server_timeout"]
     logger_path = yaml_file["log_path"]
     logger_name = yaml_file["log_name"]
 
     logger = CustomLogger(logger_path, logger_name)
-    tester = Tester(logger)
+    tester = Tester(logger, server_timeout)
     tester.run_tester()

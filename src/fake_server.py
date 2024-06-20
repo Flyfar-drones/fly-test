@@ -7,7 +7,7 @@ HOST = "127.0.0.1"
 PORT = 7500
 
 # Function to handle client connections
-def handle_client(conn, addr, logger, verbose):
+def handle_client(conn, addr, logger, verbose, timeout):
     print(f"Connected by {addr}")
     try:
         while True:
@@ -16,7 +16,7 @@ def handle_client(conn, addr, logger, verbose):
                 y_accel = np.random.randint(0, 255) + round(np.random.random(), 2)
                 y_gyro = np.random.randint(0, 255) + round(np.random.random(), 2)
                 y_PID = np.random.randint(0, 255) + round(np.random.random(), 2)
-                time.sleep(1)
+                time.sleep(timeout)
 
                 if verbose:
                     logger.log("Server", f"Set Y values of: {y_accel}, {y_gyro}, {y_PID}")
@@ -41,7 +41,7 @@ def handle_client(conn, addr, logger, verbose):
         print(f"Connection closed by {addr}")
 
 # Main function to start the server
-def run_server(logger, verbose = False):
+def run_server(logger, verbose, timeout):
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((HOST, PORT))
@@ -50,8 +50,8 @@ def run_server(logger, verbose = False):
         print(f"Server listening on {HOST}:{PORT}")
         while True:
             conn, addr = s.accept()
-            conn.settimeout(1)
-            client_thread = threading.Thread(target=handle_client, args=(conn, addr, logger, verbose))
+            conn.settimeout(timeout)
+            client_thread = threading.Thread(target=handle_client, args=(conn, addr, logger, verbose, timeout))
             client_thread.start()
 
 if __name__ == "__main__":

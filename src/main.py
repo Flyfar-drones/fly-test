@@ -15,7 +15,7 @@ import os
 import yaml
 
 class MainApp:
-    def __init__(self, visible_data_patch, time_step):
+    def __init__(self, visible_data_patch):
         #data
         self.accel_data_x = []
         self.gyro_data_x = []
@@ -44,7 +44,7 @@ class MainApp:
         self.socket_server = None
 
         self.visible_data_patch = visible_data_patch
-        self.time_step = time_step
+        self.time_step = 1
 
         self.running = False
         self.process = threading.Thread(target=self.update_data)
@@ -59,7 +59,6 @@ class MainApp:
         dpg.setup_dearpygui()
         dpg.show_viewport()
         dpg.set_primary_window("window", True)
-        #dpg.set_exit_callback(self.app_exit)
         dpg.start_dearpygui()
 
     def gui_init(self):
@@ -150,11 +149,14 @@ class MainApp:
                                     
             self.header_sim = dpg.add_text("Simulation menu:")
 
-
             with dpg.group(horizontal=True):
                 dpg.add_button(label="Start", callback=self.start)
                 dpg.add_button(label="Stop", callback=self.stop)
                 dpg.add_button(label="Reset all values", callback=self.reset)
+
+            with dpg.group(horizontal=True, width=125):
+                self.input_timeout = dpg.add_input_text(default_value="1")
+                dpg.add_button(label="Set receive timeout", callback=self.set_timeout)
 
             default_p = 15.5
             default_i = 15.5
@@ -306,6 +308,10 @@ class MainApp:
 
         self.check_for_socket_server("end")
 
+    def set_timeout(self):
+        value_time = float(dpg.get_value(self.input_timeout))
+        self.time_step = value_time
+
     def send_new_pid_data(self):
         try:
             value_p = float(dpg.get_value(self.input_p))
@@ -383,7 +389,7 @@ class MainApp:
             self.log("client: Not connected to the server")
 
 def run_app():
-    app = MainApp(visible_data_patch=100, time_step=0.1)
+    app = MainApp(visible_data_patch=100)
     app.gui_init()
     app.app_init()
     dpg.destroy_context()
