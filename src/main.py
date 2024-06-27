@@ -9,14 +9,14 @@ import time
 from datetime import datetime
 
 import threading
-import logging
 from pathlib import Path
 import os
 import yaml
 
+
 class MainApp:
     def __init__(self, visible_data_patch):
-        #data
+        # data
         self.accel_data_x = []
         self.gyro_data_x = []
         self.PID_data_x = []
@@ -36,9 +36,12 @@ class MainApp:
         self.current_setpoint_y = 0
         self.current_setpoint_z = 0
 
+        self.limit_motor_min = -255.0
+        self.limit_motor_max = 255.0
+
         self.data_x = []
 
-        #app variables
+        # app variables
         self.host = "127.0.0.1"
         self.port = 7500
         self.socket_server = None
@@ -68,9 +71,10 @@ class MainApp:
 
         dpg.create_context()
         with dpg.font_registry():
-            self.header_font = dpg.add_font(self.bold_font_path, 20 * 2)
+            self.header_font = dpg.add_font(self.bold_font_path, 30 * 2)
+            self.med_header_font = dpg.add_font(self.bold_font_path, 20 * 2)
             self.default_font = dpg.add_font(self.default_font_path, 15 * 2)
-        dpg.set_global_font_scale(0.5) #temp fix for: https://github.com/hoffstadt/DearPyGui/issues/1380
+        dpg.set_global_font_scale(0.5) # temp fix for: https://github.com/hoffstadt/DearPyGui/issues/1380
 
         with dpg.window(label='Data', tag='window'):
             with dpg.group(horizontal=True):
@@ -163,38 +167,48 @@ class MainApp:
             default_d = 15.5
 
             self.header_drone = dpg.add_text("Drone control:")
+
+            self.med_header_pid = dpg.add_text("PID:")
             with dpg.group(horizontal=True, width=300):
                 dpg.add_text("P")
                 self.input_p = dpg.add_input_text(label="", default_value=default_p)
-            
             with dpg.group(horizontal=True, width=300):
                 dpg.add_text("I")
                 self.input_i = dpg.add_input_text(label="", default_value=default_i)
-            
             with dpg.group(horizontal=True, width=300):
                 dpg.add_text("D")
                 self.input_d = dpg.add_input_text(label="", default_value=default_d)
             dpg.add_button(label="Send new PID", callback=self.send_new_pid_data)
 
+            self.med_header_setpoint = dpg.add_text("Setpoints:")
             with dpg.group(horizontal=True, width=300):
                 dpg.add_text("Setpoint X")
                 self.input_setpoint_x = dpg.add_input_text(default_value="0")
-
             with dpg.group(horizontal=True, width=300):
                 dpg.add_text("Setpoint Y")
                 self.input_setpoint_y = dpg.add_input_text(default_value="0")
-
             with dpg.group(horizontal=True, width=300):
                 dpg.add_text("Setpoint Z")
                 self.input_setpoint_z = dpg.add_input_text(default_value="0")
-
             dpg.add_button(label="Send new Setpoint", callback=self.send_new_setpoint)
 
-            #file dialog
+            self.med_header_limit = dpg.add_text("Limits:")
+            with dpg.group(horizontal=True, width=300):
+                dpg.add_text("Motor output limit min")
+                self.input_limit_motor_min = dpg.add_input_text(default_value=str(self.limit_motor_min))
+            with dpg.group(horizontal=True, width=300):
+                dpg.add_text("Motor output limit max")
+                self.input_limit_motor_max = dpg.add_input_text(default_value=str(self.limit_motor_max))
+            dpg.add_button(label="Send new limits", callback=self.send_new_limit)
+
+
+
+            #
+            # File dialog
+            #
             with dpg.file_dialog(directory_selector=False, show=False, callback=self.dialog_callback, cancel_callback=self.cancel_dialog_callback, tag="file_dialog", width=700 ,height=400):
                 dpg.add_file_extension(".*")
                 dpg.add_file_extension(".yml", color=(0, 255, 0, 255))
-
 
             self.header_app = dpg.add_text("App menu:")
             self.input_addr = dpg.add_input_text(label="server address", default_value="127.0.0.1", tag="host")
@@ -209,11 +223,16 @@ class MainApp:
             self.header_command_log = dpg.add_text("App logs:")
             self.log_field = dpg.add_input_text(width=800, height=200, multiline=True, readonly=True)
 
-            #bind every header to header font
+            #bind header font
             dpg.bind_item_font(self.header_app, self.header_font)
             dpg.bind_item_font(self.header_drone, self.header_font)
             dpg.bind_item_font(self.header_sim, self.header_font)
             dpg.bind_item_font(self.header_command_log, self.header_font)
+
+            #bind medium header font
+            dpg.bind_item_font(self.med_header_setpoint, self.med_header_font)
+            dpg.bind_item_font(self.med_header_pid, self.med_header_font)
+            dpg.bind_item_font(self.med_header_limit, self.med_header_font)
 
             #bind default font
             dpg.bind_font(self.default_font)
@@ -247,7 +266,7 @@ class MainApp:
         self.current_log_text += f"[{formatted_time}]: {text}\n"
         dpg.set_value(self.log_field, self.current_log_text)
     
-    def check_for_socket_server(self, message):
+    def send_to_socket_server(self, message):
         if self.socket_server:
             self.socket_server.send(message.encode("utf-8"))
         else:
@@ -301,12 +320,12 @@ class MainApp:
     def start(self):
         self.running = True
 
-        self.check_for_socket_server("run")
+        self.send_to_socket_server("run")
 
     def stop(self):
         self.running = False
 
-        self.check_for_socket_server("end")
+        self.send_to_socket_server("end")
 
     def set_timeout(self):
         value_time = float(dpg.get_value(self.input_timeout))
@@ -321,7 +340,7 @@ class MainApp:
             self.log("client: Invalid value")
             return
 
-        self.check_for_socket_server(f"pid {value_p},{value_i},{value_d}")
+        self.send_to_socket_server(f"pid {value_p},{value_i},{value_d}")
         self.log("client: Sent new PID data")
 
     def send_new_setpoint(self):
@@ -337,9 +356,22 @@ class MainApp:
             self.log("client: Invalid value")
             return
 
-        self.check_for_socket_server(f"set {value_setpoint_x}")
+        self.send_to_socket_server(f"set {value_setpoint_x}")
         #TODO send more setpoints when Andri says so
         self.log("client: Sent new Setpoint data")
+
+    def send_new_limit(self):
+        try:
+            value_limit_min = float(dpg.get_value(self.input_limit_motor_min))
+            self.limit_motor_min = value_limit_min
+            value_limit_max = float(dpg.get_value(self.input_limit_motor_max))
+            self.limit_motor_max = value_limit_max
+
+            self.send_to_socket_server(f"lim {self.limit_motor_min}, {self.limit_motor_max}")
+
+        except ValueError:
+            self.log("client: Invalid value")
+            return
 
     def reset(self):
 
