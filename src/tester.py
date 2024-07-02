@@ -12,9 +12,10 @@ import yaml
 from main import run_app
 from fake_server import run_server
 
+
 class CustomLogger:
     def __init__(self, logger_path, logger_name):
-        #setup logger
+        # setup logger
         if os.path.exists(logger_path):
             os.remove(logger_path)
 
@@ -35,12 +36,13 @@ class CustomLogger:
         self.logger.addHandler(self.stream_logger)
 
         self.log("Tester", "Logger is set up")
-    
+
     def log(self, log_part, log_message):
         self.logger.info(f"({log_part}) {log_message}")
 
     def error(self, log_part, log_message):
         self.logger.error(f"({log_part}) {log_message}")
+
 
 class Tester:
     def __init__(self, logger, timeout):
@@ -61,13 +63,14 @@ class Tester:
         self.thread_app.join()
         self.thread_server.join()
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config")
 
     args = parser.parse_args()
-    
-    #reading yaml
+
+    # reading yaml
     yaml_path = args.config
     yaml_file = None
     with open(yaml_path) as stream:
@@ -79,7 +82,7 @@ if __name__ == "__main__":
 
     print(yaml_file)
 
-    #variables
+    # variables
     server_timeout = yaml_file["server_timeout"]
     logger_path = yaml_file["log_path"]
     logger_name = yaml_file["log_name"]

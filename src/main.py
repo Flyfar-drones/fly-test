@@ -57,6 +57,9 @@ class MainApp:
         self.connected_to_server = False
         self.current_log_text = ""
 
+        self.plot_width = 500
+        self.plot_height = 350
+
     def app_init(self):
         dpg.create_viewport(title='Flyfar fly-test', width=1500, height=1000)
         dpg.setup_dearpygui()
@@ -76,22 +79,33 @@ class MainApp:
             self.med_header_font = dpg.add_font(self.bold_font_path, 20 * 2)
             self.default_font = dpg.add_font(self.default_font_path, 15 * 2)
 
+        with dpg.theme(tag="setpoint_theme"): # TODO: doesn't work
+            with dpg.theme_component(dpg.mvStemSeries):
+                dpg.add_theme_color(dpg.mvPlotCol_Line, (150, 255, 0), category=dpg.mvThemeCat_Plots)
+                dpg.add_theme_style(dpg.mvPlotStyleVar_Marker, dpg.mvPlotMarker_Diamond, category=dpg.mvThemeCat_Plots)
+                dpg.add_theme_style(dpg.mvPlotStyleVar_MarkerSize, 7, category=dpg.mvThemeCat_Plots)
+
+            with dpg.theme_component(dpg.mvScatterSeries):
+                dpg.add_theme_color(dpg.mvPlotCol_Line, (60, 150, 200), category=dpg.mvThemeCat_Plots)
+                dpg.add_theme_style(dpg.mvPlotStyleVar_Marker, dpg.mvPlotMarker_Square, category=dpg.mvThemeCat_Plots)
+                dpg.add_theme_style(dpg.mvPlotStyleVar_MarkerSize, 4, category=dpg.mvThemeCat_Plots)
+
         # temp fix for: https://github.com/hoffstadt/DearPyGui/issues/1380
         dpg.set_global_font_scale(0.5)
 
+        #
+        # gui widget setup
+        #
+
         with dpg.window(label='Data', tag='window'):
             with dpg.group(horizontal=True):
-                with dpg.plot(label='PID X'):
+                with dpg.plot(label='PID X', width=self.plot_width, height=self.plot_height):
                     # optionally create legend
                     dpg.add_plot_legend()
 
                     # REQUIRED: create x and y axes, set to auto scale.
-                    x_axis = dpg.add_plot_axis(dpg.mvXAxis,
-                                               label='x',
-                                               tag='x_axis_x')
-                    y_axis = dpg.add_plot_axis(dpg.mvYAxis,
-                                               label='y',
-                                               tag='y_axis_x')
+                    dpg.add_plot_axis(dpg.mvXAxis, label='x', tag='x_axis_x')
+                    dpg.add_plot_axis(dpg.mvYAxis, label='y', tag='y_axis_x')
 
                     # series belong to a y axis. Note the tag name is used in the update
                     # function update_data
@@ -119,17 +133,13 @@ class MainApp:
                                         parent='y_axis_x',
                                         tag='setpoint_x')
 
-                with dpg.plot(label='PID Y'):
+                with dpg.plot(label='PID Y', width=self.plot_width, height=self.plot_height):
                     # optionally create legend
                     dpg.add_plot_legend()
 
                     # REQUIRED: create x and y axes, set to auto scale.
-                    x_axis = dpg.add_plot_axis(dpg.mvXAxis,
-                                               label='x',
-                                               tag='x_axis_y')
-                    y_axis = dpg.add_plot_axis(dpg.mvYAxis,
-                                               label='y',
-                                               tag='y_axis_y')
+                    dpg.add_plot_axis(dpg.mvXAxis, label='x', tag='x_axis_y')
+                    dpg.add_plot_axis(dpg.mvYAxis, label='y', tag='y_axis_y')
 
                     # series belong to a y axis.
                     # Note the tag name is used in the update
@@ -152,17 +162,19 @@ class MainApp:
                                         parent='y_axis_y',
                                         tag='pid_y')
 
-                with dpg.plot(label='PID Z'):
+                    dpg.add_line_series(x=list(self.data_x),
+                                        y=list(self.setpoint_x),
+                                        label='Setpoint',
+                                        parent='y_axis_y',
+                                        tag='setpoint_y')
+            with dpg.group(horizontal=True):
+                with dpg.plot(label='PID Z', width=self.plot_width, height=self.plot_height):
                     # optionally create legend
                     dpg.add_plot_legend()
 
                     # REQUIRED: create x and y axes, set to auto scale.
-                    x_axis = dpg.add_plot_axis(dpg.mvXAxis,
-                                               label='x',
-                                               tag='x_axis_z')
-                    y_axis = dpg.add_plot_axis(dpg.mvYAxis,
-                                               label='y',
-                                               tag='y_axis_z')
+                    dpg.add_plot_axis(dpg.mvXAxis, label='x', tag='x_axis_z')
+                    dpg.add_plot_axis(dpg.mvYAxis, label='y', tag='y_axis_z')
 
                     # series belong to a y axis.
                     # Note the tag name is used in the update
@@ -184,6 +196,41 @@ class MainApp:
                                         label='PID data',
                                         parent='y_axis_z',
                                         tag='pid_z')
+
+                    dpg.add_line_series(x=list(self.data_x),
+                                        y=list(self.setpoint_x),
+                                        label='Setpoint',
+                                        parent='y_axis_z',
+                                        tag='setpoint_z')
+
+                with dpg.plot(label='PID Alt', width=self.plot_width, height=self.plot_height):
+                    # optionally create legend
+                    dpg.add_plot_legend()
+
+                    # REQUIRED: create x and y axes, set to auto scale.
+                    dpg.add_plot_axis(dpg.mvXAxis, label='x', tag='x_axis_alt')
+                    dpg.add_plot_axis(dpg.mvYAxis, label='y', tag='y_axis_alt')
+
+                    # series belong to a y axis.
+                    # Note the tag name is used in the update
+                    # function update_data
+                    dpg.add_line_series(x=list(self.data_x),
+                                        y=list(self.accel_data_z),
+                                        label='TOF data',
+                                        parent='y_axis_alt',
+                                        tag='tof_alt')
+
+                    dpg.add_line_series(x=list(self.data_x),
+                                        y=list(self.PID_data_z),
+                                        label='PID data',
+                                        parent='y_axis_alt',
+                                        tag='pid_alt')
+
+                    dpg.add_line_series(x=list(self.data_x),
+                                        y=list(self.setpoint_x),
+                                        label='Setpoint',
+                                        parent='y_axis_alt',
+                                        tag='setpoint_alt')
 
             self.header_sim = dpg.add_text("Simulation menu:")
 
@@ -277,6 +324,12 @@ class MainApp:
 
             # bind default font
             dpg.bind_font(self.default_font)
+
+            # bind theme to plots
+            dpg.bind_item_theme("setpoint_x", "setpoint_theme")
+            dpg.bind_item_theme("setpoint_y", "setpoint_theme")
+            dpg.bind_item_theme("setpoint_z", "setpoint_theme")
+            dpg.bind_item_theme("setpoint_alt", "setpoint_theme")
 
     # file dialog
     def dialog_callback(sender, app_data, user_data):
@@ -459,7 +512,7 @@ class MainApp:
     def disconnect_from_server(self):
         if self.connected_to_server:
             self.socket_server.close()
-            del self.socket_server
+            self.socket_server = None
 
             dpg.set_value(self.server_status, "Not connected to server")
             self.log("client: Disconnected from server")
