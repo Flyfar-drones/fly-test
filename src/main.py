@@ -81,6 +81,7 @@ class MainApp:
             self.header_font = dpg.add_font(self.bold_font_path, 30 * 2)
             self.med_header_font = dpg.add_font(self.bold_font_path, 20 * 2)
             self.default_font = dpg.add_font(self.default_font_path, 15 * 2)
+            self.bold_font = dpg.add_font(self.bold_font_path, 15 * 2)
 
         with dpg.theme(tag="setpoint_theme"): # TODO: doesn't work
             with dpg.theme_component(dpg.mvStemSeries):
@@ -235,64 +236,81 @@ class MainApp:
                                         parent='y_axis_alt',
                                         tag='setpoint_alt')
 
-            self.header_sim = dpg.add_text("Simulation menu:")
-
             with dpg.group(horizontal=True):
-                dpg.add_button(label="Start", callback=self.start)
-                dpg.add_button(label="Stop", callback=self.stop)
-                dpg.add_button(label="Reset all values", callback=self.reset)
+                with dpg.group(horizontal=False):
+                    self.header_sim = dpg.add_text("Simulation menu:")
 
-            with dpg.group(horizontal=True, width=125):
-                self.input_timeout = dpg.add_input_text(default_value="1")
-                dpg.add_button(label="Set receive timeout", callback=self.set_timeout)
+                    with dpg.group(horizontal=True):
+                        dpg.add_button(label="Start", callback=self.start)
+                        dpg.add_button(label="Stop", callback=self.stop)
+                        dpg.add_button(label="Reset all values", callback=self.reset)
 
-            default_p = 15.5
-            default_i = 15.5
-            default_d = 15.5
+                    with dpg.group(horizontal=True, width=125):
+                        self.input_timeout = dpg.add_input_text(default_value="1")
+                        dpg.add_button(label="Set receive timeout", callback=self.set_timeout)
 
-            self.header_drone = dpg.add_text("Drone control:")
+                    default_p = 15.5
+                    default_i = 15.5
+                    default_d = 15.5
 
-            self.med_header_pid = dpg.add_text("PID:")
-            with dpg.group(horizontal=True, width=300):
-                dpg.add_text("P")
-                self.input_p = dpg.add_input_text(label="", default_value=default_p)
-            with dpg.group(horizontal=True, width=300):
-                dpg.add_text("I")
-                self.input_i = dpg.add_input_text(label="", default_value=default_i)
-            with dpg.group(horizontal=True, width=300):
-                dpg.add_text("D")
-                self.input_d = dpg.add_input_text(label="", default_value=default_d)
-            dpg.add_button(label="Send new PID", callback=self.send_new_pid_data)
+                    self.header_drone = dpg.add_text("Drone control:")
 
-            self.med_header_setpoint = dpg.add_text("Setpoints:")
-            with dpg.group(horizontal=True, width=300):
-                dpg.add_text("Setpoint X")
-                self.input_setpoint_x = dpg.add_input_text(default_value="0")
-            with dpg.group(horizontal=True, width=300):
-                dpg.add_text("Setpoint Y")
-                self.input_setpoint_y = dpg.add_input_text(default_value="0")
-            with dpg.group(horizontal=True, width=300):
-                dpg.add_text("Setpoint Z")
-                self.input_setpoint_z = dpg.add_input_text(default_value="0")
+                    self.med_header_pid = dpg.add_text("PID:")
+                    with dpg.group(horizontal=True, width=300):
+                        dpg.add_text("P")
+                        self.input_p = dpg.add_input_text(label="", default_value=default_p)
+                    with dpg.group(horizontal=True, width=300):
+                        dpg.add_text("I")
+                        self.input_i = dpg.add_input_text(label="", default_value=default_i)
+                    with dpg.group(horizontal=True, width=300):
+                        dpg.add_text("D")
+                        self.input_d = dpg.add_input_text(label="", default_value=default_d)
+                    dpg.add_button(label="Send new PID", callback=self.send_new_pid_data)
 
-            dpg.add_button(label="Send new Setpoint",
-                           callback=self.send_new_setpoint)
+                    self.med_header_setpoint = dpg.add_text("Setpoints:")
+                    with dpg.group(horizontal=True, width=300):
+                        dpg.add_text("Setpoint X")
+                        self.input_setpoint_x = dpg.add_input_text(default_value="0")
+                    with dpg.group(horizontal=True, width=300):
+                        dpg.add_text("Setpoint Y")
+                        self.input_setpoint_y = dpg.add_input_text(default_value="0")
+                    with dpg.group(horizontal=True, width=300):
+                        dpg.add_text("Setpoint Z")
+                        self.input_setpoint_z = dpg.add_input_text(default_value="0")
 
-            self.med_header_limit = dpg.add_text("Limits:")
-            with dpg.group(horizontal=True, width=300):
-                dpg.add_text("Motor output limit min")
-                self.input_limit_motor_min = dpg.add_input_text(
-                                    default_value=str(self.limit_motor_min))
-            with dpg.group(horizontal=True, width=300):
-                dpg.add_text("Motor output limit max")
-                self.input_limit_motor_max = dpg.add_input_text(default_value=str(self.limit_motor_max))
-            dpg.add_button(label="Send new limits", callback=self.send_new_limit)
+                    dpg.add_button(label="Send new Setpoint", callback=self.send_new_setpoint)
 
-            self.med_header_const = dpg.add_text("Other constants:")
-            with dpg.group(horizontal=True, width=300):
-                dpg.add_text("Tau")
-                self.input_tau = dpg.add_input_text(default_value=str(self.tau))
-            dpg.add_button(label="Send new constants", callback=self.send_new_constants)
+                    self.med_header_limit = dpg.add_text("Limits:")
+                    with dpg.group(horizontal=True, width=300):
+                        dpg.add_text("Motor output limit min")
+                        self.input_limit_motor_min = dpg.add_input_text(
+                                            default_value=str(self.limit_motor_min))
+                    with dpg.group(horizontal=True, width=300):
+                        dpg.add_text("Motor output limit max")
+                        self.input_limit_motor_max = dpg.add_input_text(default_value=str(self.limit_motor_max))
+                    dpg.add_button(label="Send new limits", callback=self.send_new_limit)
+
+                    self.med_header_const = dpg.add_text("Other constants:")
+                    with dpg.group(horizontal=True, width=300):
+                        dpg.add_text("Tau")
+                        self.input_tau = dpg.add_input_text(default_value=str(self.tau))
+                    dpg.add_button(label="Send new constants", callback=self.send_new_constants)
+                with dpg.group(horizontal=False):
+                    with dpg.group(horizontal=True):
+                        self.bold1 = dpg.add_text("Tau  -")
+                        dpg.add_text("Integration constant, also used for sampling time")
+                    with dpg.group(horizontal=True):
+                        self.bold2 = dpg.add_text("PID X  -")
+                        dpg.add_text("PID for pitch")
+                    with dpg.group(horizontal=True):
+                        self.bold3 = dpg.add_text("PID Y  -")
+                        dpg.add_text("PID for yaw")
+                    with dpg.group(horizontal=True):
+                        self.bold4 = dpg.add_text("PID Z  -")
+                        dpg.add_text("PID for roll")
+                    with dpg.group(horizontal=True):
+                        self.bold5 = dpg.add_text("PID Alt  -")
+                        dpg.add_text("PID for altitude")
 
             #
             # File dialog
@@ -332,7 +350,14 @@ class MainApp:
             dpg.bind_item_font(self.med_header_limit, self.med_header_font)
             dpg.bind_item_font(self.med_header_const, self.med_header_font)
 
-            # bind default font
+            # bind bold fonts
+            dpg.bind_item_font(self.bold_font, self.bold1)
+            dpg.bind_item_font(self.bold_font, self.bold2)
+            dpg.bind_item_font(self.bold_font, self.bold3)
+            dpg.bind_item_font(self.bold_font, self.bold4)
+            dpg.bind_item_font(self.bold_font, self.bold5)
+
+            # bind default fonts
             dpg.bind_font(self.default_font)
 
             # bind theme to plots
