@@ -414,6 +414,10 @@ class MainApp:
                     y_gyro = float(data_arr[0])
                     y_PID = float(data_arr[1])
                 except ValueError:
+                    self.log("client: Wrong value")
+                    continue
+                except IndexError:
+                    self.log("client: list index out of range when retrieving data")
                     continue
 
                 self.data_x.append(self.iter)
