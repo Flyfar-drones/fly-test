@@ -39,6 +39,9 @@ class MainApp:
         self.limit_motor_min = -255.0
         self.limit_motor_max = 255.0
 
+        # const
+        self.tau = 0.004
+
         self.data_x = []
 
         # app variables
@@ -285,6 +288,12 @@ class MainApp:
                 self.input_limit_motor_max = dpg.add_input_text(default_value=str(self.limit_motor_max))
             dpg.add_button(label="Send new limits", callback=self.send_new_limit)
 
+            self.med_header_const = dpg.add_text("Other constants:")
+            with dpg.group(horizontal=True, width=300):
+                dpg.add_text("Tau")
+                self.input_tau = dpg.add_input_text(default_value=str(self.tau))
+            dpg.add_button(label="Send new constants", callback=self.send_new_constants)
+
             #
             # File dialog
             #
@@ -321,6 +330,7 @@ class MainApp:
             dpg.bind_item_font(self.med_header_setpoint, self.med_header_font)
             dpg.bind_item_font(self.med_header_pid, self.med_header_font)
             dpg.bind_item_font(self.med_header_limit, self.med_header_font)
+            dpg.bind_item_font(self.med_header_const, self.med_header_font)
 
             # bind default font
             dpg.bind_font(self.default_font)
@@ -468,8 +478,18 @@ class MainApp:
             value_limit_max = float(dpg.get_value(self.input_limit_motor_max))
             self.limit_motor_max = value_limit_max
 
-            self.send_to_socket_server(f"lim {self.limit_motor_min}, {self.limit_motor_max}")
+            self.send_to_socket_server(f"lim {self.limit_motor_min},{self.limit_motor_max}")
 
+        except ValueError:
+            self.log("client: Invalid value")
+            return
+
+    def send_new_constants(self):
+        try:
+            value_tau = float(dpg.get_value(self.input_tau))
+            self.tau = value_tau
+
+            self.send_to_socket_server(f"const {self.tau}")
         except ValueError:
             self.log("client: Invalid value")
             return
